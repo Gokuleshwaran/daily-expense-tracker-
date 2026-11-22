@@ -1,0 +1,7 @@
+# Never upload these to GitHub
+node_modules/
+.next/
+.env
+.env.local
+*.log
+Claude outputs/
