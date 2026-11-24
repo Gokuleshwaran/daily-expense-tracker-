@@ -16,6 +16,7 @@ A simple web app to log your daily expenses in seconds and see where your money 
   - Top 5 expenses
   - Monthly budget with a progress bar (turns orange at 80%, red when over)
   - 6-month spending trend
+- **Settings page** to set your monthly budget, add or delete custom categories (own name, icon and colour) and download your expenses as a CSV file
 - **Mobile-friendly** layout with a floating **+ Add expense** button
 - Amounts in Indian Rupees (₹)
 
@@ -53,7 +54,7 @@ Daily Expence Tracker/
 │   │   ├── login/           Login and sign-up page
 │   │   ├── dashboard/       Weekly / monthly dashboard
 │   │   ├── expenses/        Expense list with filters
-│   │   └── settings/        (coming soon)
+│   │   └── settings/        Budget, custom categories, CSV export
 │   ├── components/          Nav bar, app shell, Add/Edit expense form
 │   ├── lib/                 API helper, login state, date & ₹ formatting
 │   └── .env.example
@@ -141,6 +142,6 @@ All routes except sign up and log in need `Authorization: Bearer <token>`. See [
 - [x] Expense list with filters and search
 - [x] Weekly and monthly dashboard with charts
 - [x] Monthly budget
-- [ ] Settings page (custom categories, budget, CSV export)
+- [x] Settings page (custom categories, budget, CSV export)
 - [ ] Deploy to Render + Vercel
 - [ ] Recurring expenses, installable phone app (PWA), per-category budgets
