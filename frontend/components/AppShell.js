@@ -17,9 +17,14 @@ export default function AppShell({ title, actions, children }) {
   const [modal, setModal] = useState({ open: false, expense: null });
   const [version, setVersion] = useState(0); // bumps after every add / edit / delete
 
+  const refreshCategories = useCallback(
+    () => api('/api/categories').then(setCategories).catch(() => {}),
+    []
+  );
+
   useEffect(() => {
-    if (user) api('/api/categories').then(setCategories).catch(() => {});
-  }, [user]);
+    if (user) refreshCategories();
+  }, [user, refreshCategories]);
 
   const openAdd = useCallback(() => setModal({ open: true, expense: null }), []);
   const openEdit = useCallback((expense) => setModal({ open: true, expense }), []);
@@ -30,7 +35,7 @@ export default function AppShell({ title, actions, children }) {
   }
 
   return (
-    <ExpenseUIContext.Provider value={{ openAdd, openEdit, version, categories }}>
+    <ExpenseUIContext.Provider value={{ openAdd, openEdit, version, categories, refreshCategories }}>
       <Nav />
       <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">
         {(title || actions) && (
