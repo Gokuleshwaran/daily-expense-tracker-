@@ -1,2 +1,26 @@
-node_modules
+# =========================================================
+#  Backend: Node.js + Express + TypeScript
+# =========================================================
+
+# Dependencies
+node_modules/
+
+# Compiled TypeScript output (created by `npm run build`)
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables (keep .env.example)
 .env
+.env.*
+!.env.example
+
+# Logs & runtime files
+logs/
+*.log
+npm-debug.log*
+*.pid
+
+# Tests
+coverage/
+.nyc_output/
