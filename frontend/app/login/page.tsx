@@ -1,14 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { errorMessage } from '@/lib/api';
+
+type Mode = 'login' | 'signup';
+
+interface LoginForm {
+  name: string;
+  email: string;
+  password: string;
+}
 
 export default function LoginPage() {
   const { user, loading, login, signup } = useAuth();
   const router = useRouter();
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [mode, setMode] = useState<Mode>('login');
+  const [form, setForm] = useState<LoginForm>({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -16,9 +25,10 @@ export default function LoginPage() {
     if (!loading && user) router.replace('/dashboard');
   }, [user, loading, router]);
 
-  const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+  const update = (key: keyof LoginForm) => (e: ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [key]: e.target.value });
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setBusy(true);
@@ -27,7 +37,7 @@ export default function LoginPage() {
       else await signup(form.name, form.email, form.password);
       router.replace('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }

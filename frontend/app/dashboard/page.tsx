@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppShell, { useExpenseUI } from '@/components/AppShell';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { addDays, dayLabel, fromISODate, money, monthRange, todayISO } from '@/lib/format';
+import type { Budget, CategoryTotal, Dashboard as DashboardData, DayTotal, Expense, Period, TopExpense } from '@/lib/types';
 
 const BRAND = '#4f46e5';
 const BRAND_SOFT = '#c7d2fe';
@@ -20,9 +21,9 @@ export default function DashboardPage() {
 }
 
 // ---------- helpers ----------
-const short = (n) => (n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `₹${n}`);
+const short = (n: number): string => (n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `₹${n}`);
 
-function periodLabel(period, from, to) {
+function periodLabel(period: Period, from: string, to: string): string {
   const f = fromISODate(from);
   const t = fromISODate(to);
   if (period === 'month') return f.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -32,7 +33,7 @@ function periodLabel(period, from, to) {
   return `${left} – ${right}`;
 }
 
-function shiftDate(period, date, dir) {
+function shiftDate(period: Period, date: string, dir: number): string {
   if (period === 'week') return addDays(date, 7 * dir);
   return monthRange(date, dir).from;
 }
@@ -40,9 +41,9 @@ function shiftDate(period, date, dir) {
 // ---------- page ----------
 function Dashboard() {
   const { version, openEdit } = useExpenseUI();
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState<Period>('week');
   const [date, setDate] = useState(todayISO());
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [budgetTick, setBudgetTick] = useState(0);
@@ -50,9 +51,9 @@ function Dashboard() {
   useEffect(() => {
     setLoading(true);
     setError('');
-    api(`/api/dashboard?period=${period}&date=${date}&today=${todayISO()}`)
+    api<DashboardData>(`/api/dashboard?period=${period}&date=${date}&today=${todayISO()}`)
       .then(setData)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [period, date, version, budgetTick]);
 
@@ -65,7 +66,7 @@ function Dashboard() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex rounded-xl bg-slate-200/70 p-1">
-          {['week', 'month'].map((p) => (
+          {(['week', 'month'] as const).map((p) => (
             <button
               key={p}
               onClick={() => {
@@ -120,7 +121,7 @@ function Dashboard() {
             <Stat label="Daily average" value={money(data.dailyAverage)} sub={isCurrent ? 'so far' : 'for the period'} />
             <Stat label="Expenses" value={data.count} sub={data.count === 1 ? 'entry' : 'entries'} />
             {period === 'month' ? (
-              <BudgetTile budget={data.budget} onSaved={() => setBudgetTick((t) => t + 1)} />
+              <BudgetTile budget={data.budget ?? null} onSaved={() => setBudgetTick((t) => t + 1)} />
             ) : (
               <Stat
                 label="Top category"
@@ -156,7 +157,14 @@ function Dashboard() {
 }
 
 // ---------- pieces ----------
-function Stat({ label, value, sub, className = '' }) {
+interface StatProps {
+  label: string;
+  value: ReactNode;
+  sub?: string;
+  className?: string;
+}
+
+function Stat({ label, value, sub, className = '' }: StatProps) {
   return (
     <div className={`card ${className}`}>
       <p className="text-sm text-slate-500">{label}</p>
@@ -166,7 +174,7 @@ function Stat({ label, value, sub, className = '' }) {
   );
 }
 
-function Change({ pct, prevTotal, prevWord }) {
+function Change({ pct, prevTotal, prevWord }: { pct: number | null; prevTotal: number; prevWord: string }) {
   if (pct === null) {
     return <p className="mt-1 text-xs text-slate-400">{prevTotal ? '' : `Nothing recorded ${prevWord}`}</p>;
   }
@@ -184,12 +192,12 @@ function Change({ pct, prevTotal, prevWord }) {
   );
 }
 
-function BudgetTile({ budget, onSaved }) {
+function BudgetTile({ budget, onSaved }: { budget: Budget | null; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function save(e) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     try {
@@ -262,7 +270,20 @@ function BudgetTile({ budget, onSaved }) {
   );
 }
 
-function ChartTooltip({ active, payload, labelFor }) {
+interface ChartRow {
+  total: number;
+  date?: string;
+  full?: string;
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: { payload: ChartRow }[];
+  labelFor: (row: ChartRow) => string;
+}
+
+// Recharts injects `active` and `payload` when it renders the tooltip
+function ChartTooltip({ active, payload, labelFor }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
@@ -273,7 +294,7 @@ function ChartTooltip({ active, payload, labelFor }) {
   );
 }
 
-function DailyChart({ period, byDay }) {
+function DailyChart({ period, byDay }: { period: Period; byDay: DayTotal[] }) {
   const today = todayISO();
   const rows = byDay.map((d) => ({
     ...d,
@@ -307,7 +328,7 @@ function DailyChart({ period, byDay }) {
               minTickGap={8}
             />
             <YAxis tickFormatter={short} tickLine={false} axisLine={false} tick={{ fill: AXIS, fontSize: 12 }} width={52} allowDecimals={false} />
-            <Tooltip cursor={{ fill: '#f1f5f9' }} content={<ChartTooltip labelFor={(p) => dayLabel(p.date)} />} />
+            <Tooltip cursor={{ fill: '#f1f5f9' }} content={<ChartTooltip labelFor={(p) => dayLabel(p.date ?? '')} />} />
             <Bar dataKey="total" isAnimationActive={false} radius={[4, 4, 0, 0]} maxBarSize={44}>
               {rows.map((r) => (
                 <Cell key={r.date} fill={r.date > today ? BRAND_SOFT : BRAND} />
@@ -320,7 +341,7 @@ function DailyChart({ period, byDay }) {
   );
 }
 
-function CategoryBreakdown({ items }) {
+function CategoryBreakdown({ items }: { items: CategoryTotal[] }) {
   const max = Math.max(...items.map((i) => i.total), 1);
   return (
     <section className="card lg:col-span-2">
@@ -348,7 +369,7 @@ function CategoryBreakdown({ items }) {
   );
 }
 
-function TopExpenses({ items, onOpen }) {
+function TopExpenses({ items, onOpen }: { items: TopExpense[]; onOpen: (expense: Expense) => void }) {
   return (
     <section className="card p-0 lg:col-span-2">
       <h2 className="px-5 pb-2 pt-5 font-semibold">Top expenses</h2>
@@ -356,7 +377,7 @@ function TopExpenses({ items, onOpen }) {
         {items.map((e, i) => (
           <li key={e.id}>
             <button
-              onClick={() => api(`/api/expenses?from=${e.date}&to=${e.date}`).then((list) => {
+              onClick={() => api<Expense[]>(`/api/expenses?from=${e.date}&to=${e.date}`).then((list) => {
                 const full = list.find((x) => x.id === e.id);
                 if (full) onOpen(full);
               })}
@@ -380,7 +401,7 @@ function TopExpenses({ items, onOpen }) {
   );
 }
 
-function TrendChart({ trend, current }) {
+function TrendChart({ trend, current }: { trend: { month: string; total: number }[]; current: string }) {
   const rows = trend.map((t) => {
     const [y, m] = t.month.split('-').map(Number);
     const d = new Date(y, m - 1, 1);
@@ -395,7 +416,7 @@ function TrendChart({ trend, current }) {
             <CartesianGrid vertical={false} stroke={GRID} />
             <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: GRID }} tick={{ fill: AXIS, fontSize: 12 }} />
             <YAxis tickFormatter={short} tickLine={false} axisLine={false} tick={{ fill: AXIS, fontSize: 12 }} width={52} allowDecimals={false} />
-            <Tooltip cursor={{ fill: '#f1f5f9' }} content={<ChartTooltip labelFor={(p) => p.full} />} />
+            <Tooltip cursor={{ fill: '#f1f5f9' }} content={<ChartTooltip labelFor={(p) => p.full ?? ''} />} />
             <Bar dataKey="total" isAnimationActive={false} radius={[4, 4, 0, 0]} maxBarSize={48}>
               {rows.map((r) => (
                 <Cell key={r.month} fill={r.month === current ? BRAND : BRAND_SOFT} />

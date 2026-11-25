@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import AppShell, { useExpenseUI } from '@/components/AppShell';
-import { api, getToken } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { API_URL, api, errorMessage, getToken } from '@/lib/api';
+import { useAuth, useUser } from '@/lib/auth';
 import { money, todayISO } from '@/lib/format';
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
 const COLORS = ['#f97316', '#3b82f6', '#8b5cf6', '#ef4444', '#ec4899', '#10b981', '#eab308', '#64748b', '#14b8a6', '#6366f1'];
 const ICONS = ['🍔', '🚌', '🏠', '🧾', '🛍️', '💊', '🎬', '💸', '☕', '🎓', '✈️', '🎁', '🐶', '💪', '📱', '⛽'];
@@ -24,7 +22,7 @@ export default function SettingsPage() {
   );
 }
 
-function Message({ error, ok }) {
+function Message({ error, ok }: { error?: string; ok?: string }) {
   if (error) return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>;
   if (ok) return <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{ok}</p>;
   return null;
@@ -32,7 +30,7 @@ function Message({ error, ok }) {
 
 // ---------- Account ----------
 function AccountCard() {
-  const { user } = useAuth();
+  const user = useUser();
   return (
     <section className="card">
       <h2 className="mb-3 font-semibold">Account</h2>
@@ -56,26 +54,27 @@ function AccountCard() {
 
 // ---------- Monthly budget ----------
 function BudgetCard() {
-  const { user, setUser } = useAuth();
+  const user = useUser();
+  const { setUser } = useAuth();
   const [value, setValue] = useState(user.monthly_budget != null ? String(user.monthly_budget) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
-  async function save(e) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setOk('');
     setBusy(true);
     try {
-      const { monthly_budget } = await api('/api/budget', {
+      const { monthly_budget } = await api<{ monthly_budget: number | null }>('/api/budget', {
         method: 'PUT',
         body: { monthly_budget: value === '' ? null : Number(value) },
       });
       setUser({ ...user, monthly_budget });
       setOk(monthly_budget == null ? 'Budget cleared' : `Budget set to ${money(monthly_budget)} per month`);
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -115,9 +114,9 @@ function CategoriesCard() {
   const [color, setColor] = useState(COLORS[8]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [confirmId, setConfirmId] = useState(null);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  async function add(e) {
+  async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setBusy(true);
@@ -126,13 +125,13 @@ function CategoriesCard() {
       setName('');
       await refreshCategories();
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(id) {
+  async function remove(id: number) {
     if (confirmId !== id) return setConfirmId(id);
     setError('');
     try {
@@ -140,7 +139,7 @@ function CategoriesCard() {
       setConfirmId(null);
       await refreshCategories();
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     }
   }
 
@@ -252,7 +251,7 @@ function ExportCard() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.message || 'Could not reach the server');
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }

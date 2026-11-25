@@ -1,17 +1,41 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { api, errorMessage } from '@/lib/api';
 import { todayISO } from '@/lib/format';
+import { PAYMENT_METHODS, type Category, type Expense, type ExpenseInput, type PaymentMethod } from '@/lib/types';
 
-const METHODS = ['UPI', 'Cash', 'Card', 'Other'];
+interface ExpenseModalProps {
+  open: boolean;
+  /** null → add mode, an expense → edit mode */
+  expense: Expense | null;
+  categories: Category[];
+  onClose: () => void;
+  /** Called after save (with the saved expense) or delete (with null) */
+  onSaved: (expense: Expense | null) => void;
+}
+
+interface FormState {
+  amount: string;
+  category_id: number | null;
+  date: string;
+  note: string;
+  payment_method: PaymentMethod;
+}
+
+const emptyForm = (): FormState => ({
+  amount: '',
+  category_id: null,
+  date: todayISO(),
+  note: '',
+  payment_method: 'UPI',
+});
 
 // Add / Edit expense form shown as a bottom sheet on phones and a dialog on desktop.
-// expense = null → add mode; expense = {...} → edit mode
-export default function ExpenseModal({ open, expense, categories, onClose, onSaved }) {
-  const isEdit = Boolean(expense);
-  const amountRef = useRef(null);
-  const [form, setForm] = useState({});
+export default function ExpenseModal({ open, expense, categories, onClose, onSaved }: ExpenseModalProps) {
+  const isEdit = expense !== null;
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -28,7 +52,7 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
             note: expense.note || '',
             payment_method: expense.payment_method || 'UPI',
           }
-        : { amount: '', category_id: null, date: todayISO(), note: '', payment_method: 'UPI' }
+        : emptyForm()
     );
     setError('');
     setConfirmDelete(false);
@@ -38,36 +62,45 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
   // Close with the Escape key
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;
 
-  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     if (!(Number(form.amount) > 0)) return setError('Enter an amount more than 0');
     if (!form.category_id) return setError('Pick a category');
     setBusy(true);
     try {
-      const body = { ...form, amount: Number(form.amount) };
+      const body: ExpenseInput = {
+        amount: Number(form.amount),
+        category_id: form.category_id,
+        date: form.date,
+        note: form.note,
+        payment_method: form.payment_method,
+      };
       const saved = isEdit
-        ? await api(`/api/expenses/${expense.id}`, { method: 'PUT', body })
-        : await api('/api/expenses', { method: 'POST', body });
+        ? await api<Expense>(`/api/expenses/${expense.id}`, { method: 'PUT', body })
+        : await api<Expense>('/api/expenses', { method: 'POST', body });
       onSaved(saved);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   }
 
   async function handleDelete() {
+    if (!expense) return;
     if (!confirmDelete) return setConfirmDelete(true);
     setBusy(true);
     try {
@@ -75,7 +108,7 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
       onSaved(null);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
       setBusy(false);
     }
   }
@@ -106,7 +139,7 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
               step="0.01"
               min="0"
               placeholder="0"
-              value={form.amount ?? ''}
+              value={form.amount}
               onChange={(e) => set('amount', e.target.value)}
               className="w-full bg-transparent px-2 py-3 text-2xl font-semibold outline-none"
             />
@@ -144,7 +177,7 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
             <input
               type="date"
               className="input"
-              value={form.date || ''}
+              value={form.date}
               max={todayISO()}
               onChange={(e) => set('date', e.target.value)}
               required
@@ -154,10 +187,10 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
             <span className="mb-1 block text-sm font-medium">Paid by</span>
             <select
               className="input"
-              value={form.payment_method || 'UPI'}
-              onChange={(e) => set('payment_method', e.target.value)}
+              value={form.payment_method}
+              onChange={(e) => set('payment_method', e.target.value as PaymentMethod)}
             >
-              {METHODS.map((m) => (
+              {PAYMENT_METHODS.map((m) => (
                 <option key={m}>{m}</option>
               ))}
             </select>
@@ -173,7 +206,7 @@ export default function ExpenseModal({ open, expense, categories, onClose, onSav
             className="input"
             placeholder="e.g. Lunch with team"
             maxLength={200}
-            value={form.note || ''}
+            value={form.note}
             onChange={(e) => set('note', e.target.value)}
           />
         </label>

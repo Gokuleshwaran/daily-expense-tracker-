@@ -1,24 +1,52 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import Nav from './Nav';
 import ExpenseModal from './ExpenseModal';
 import { useRequireAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import type { Category, Expense } from '@/lib/types';
+
+interface ExpenseUIContextValue {
+  openAdd: () => void;
+  openEdit: (expense: Expense) => void;
+  version: number;
+  categories: Category[];
+  refreshCategories: () => Promise<void>;
+}
 
 // Lets any page open the Add / Edit form and know when data changed
-const ExpenseUIContext = createContext(null);
-export const useExpenseUI = () => useContext(ExpenseUIContext);
+const ExpenseUIContext = createContext<ExpenseUIContextValue | null>(null);
+
+export function useExpenseUI(): ExpenseUIContextValue {
+  const ctx = useContext(ExpenseUIContext);
+  if (!ctx) throw new Error('useExpenseUI must be used inside <AppShell>');
+  return ctx;
+}
+
+interface ModalState {
+  open: boolean;
+  expense: Expense | null;
+}
+
+interface AppShellProps {
+  title?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}
 
 // Wraps every logged-in page: checks login, shows the nav bar and the + Add button
-export default function AppShell({ title, actions, children }) {
+export default function AppShell({ title, actions, children }: AppShellProps) {
   const { user, loading } = useRequireAuth();
-  const [categories, setCategories] = useState([]);
-  const [modal, setModal] = useState({ open: false, expense: null });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [modal, setModal] = useState<ModalState>({ open: false, expense: null });
   const [version, setVersion] = useState(0); // bumps after every add / edit / delete
 
   const refreshCategories = useCallback(
-    () => api('/api/categories').then(setCategories).catch(() => {}),
+    () =>
+      api<Category[]>('/api/categories')
+        .then(setCategories)
+        .catch(() => {}),
     []
   );
 
@@ -27,7 +55,7 @@ export default function AppShell({ title, actions, children }) {
   }, [user, refreshCategories]);
 
   const openAdd = useCallback(() => setModal({ open: true, expense: null }), []);
-  const openEdit = useCallback((expense) => setModal({ open: true, expense }), []);
+  const openEdit = useCallback((expense: Expense) => setModal({ open: true, expense }), []);
   const close = useCallback(() => setModal((m) => ({ ...m, open: false })), []);
 
   if (loading || !user) {

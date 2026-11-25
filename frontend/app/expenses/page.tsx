@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppShell, { useExpenseUI } from '@/components/AppShell';
-import { api } from '@/lib/api';
-import { dayLabel, money, monthRange, todayISO, weekRange } from '@/lib/format';
+import { api, errorMessage } from '@/lib/api';
+import { dayLabel, money, monthRange, todayISO, weekRange, type DateRange } from '@/lib/format';
+import type { Expense } from '@/lib/types';
 
-const PRESETS = [
+type PresetKey = 'week' | 'month' | 'lastMonth' | 'all' | 'custom';
+
+const PRESETS: { key: PresetKey; label: string }[] = [
   { key: 'week', label: 'This week' },
   { key: 'month', label: 'This month' },
   { key: 'lastMonth', label: 'Last month' },
@@ -13,11 +16,17 @@ const PRESETS = [
   { key: 'custom', label: 'Custom' },
 ];
 
-function rangeForPreset(key) {
+function rangeForPreset(key: PresetKey): DateRange {
   if (key === 'week') return weekRange();
   if (key === 'month') return monthRange();
   if (key === 'lastMonth') return monthRange(todayISO(), -1);
   return { from: '', to: '' };
+}
+
+interface DayGroup {
+  date: string;
+  items: Expense[];
+  total: number;
 }
 
 export default function ExpensesPage() {
@@ -30,12 +39,12 @@ export default function ExpensesPage() {
 
 function ExpenseList() {
   const { openEdit, openAdd, version, categories } = useExpenseUI();
-  const [preset, setPreset] = useState('month');
-  const [range, setRange] = useState(monthRange());
+  const [preset, setPreset] = useState<PresetKey>('month');
+  const [range, setRange] = useState<DateRange>(monthRange());
   const [categoryId, setCategoryId] = useState('');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -53,18 +62,19 @@ function ExpenseList() {
     if (debounced) params.set('q', debounced);
     setLoading(true);
     setError('');
-    api(`/api/expenses?${params}`)
+    api<Expense[]>(`/api/expenses?${params}`)
       .then(setExpenses)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [range, categoryId, debounced, version]);
 
   // Group by day, keeping newest first
-  const groups = useMemo(() => {
-    const map = new Map();
+  const groups = useMemo<DayGroup[]>(() => {
+    const map = new Map<string, Expense[]>();
     for (const e of expenses) {
-      if (!map.has(e.date)) map.set(e.date, []);
-      map.get(e.date).push(e);
+      const list = map.get(e.date) ?? [];
+      list.push(e);
+      map.set(e.date, list);
     }
     return [...map.entries()].map(([date, items]) => ({
       date,
@@ -118,12 +128,7 @@ function ExpenseList() {
               </option>
             ))}
           </select>
-          <input
-            className="input"
-            placeholder="Search notes…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input className="input" placeholder="Search notes…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 

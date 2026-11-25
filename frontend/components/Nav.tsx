@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
-const LINKS = [
+const LINKS: { href: string; label: string }[] = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/expenses', label: 'Expenses' },
   { href: '/settings', label: 'Settings' },
