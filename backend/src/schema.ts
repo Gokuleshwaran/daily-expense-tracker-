@@ -1,5 +1,7 @@
--- Runs automatically on server start (safe to run many times)
+// Database tables. Runs automatically on server start (safe to run many times).
+// Kept as a TypeScript string so it is included in the compiled `dist/` build.
 
+export const SCHEMA_SQL = /* sql */ `
 CREATE TABLE IF NOT EXISTS users (
   id             SERIAL PRIMARY KEY,
   email          TEXT UNIQUE NOT NULL,
@@ -39,3 +41,4 @@ CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses (user_id, date);
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+`;

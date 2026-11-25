@@ -1,4 +1,4 @@
-# Daily Expense Tracker — Backend (Node.js + Express)
+# Daily Expense Tracker — Backend (Node.js + Express + TypeScript)
 
 ## 1. Get your Supabase connection string
 
@@ -38,6 +38,33 @@ Tables and default categories are created automatically in Supabase; there is no
 
 Now start the frontend (`npm run dev` in the `frontend` folder) and sign up at http://localhost:3000.
 
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Runs `src/index.ts` with **tsx** and restarts on every save (for development) |
+| `npm run build` | Compiles TypeScript from `src/` into JavaScript in `dist/` |
+| `npm start` | Runs the compiled server from `dist/` (used in production / Render) |
+| `npm run typecheck` | Checks types without building |
+
+## Project structure
+
+```
+backend/
+├── src/
+│   ├── index.ts            Express app, routes, error handling
+│   ├── config.ts           Reads and checks environment variables
+│   ├── db.ts               PostgreSQL (Supabase) pool + typed query helper
+│   ├── schema.ts           Table definitions (run on start)
+│   ├── middleware/auth.ts  JWT sign + requireAuth
+│   ├── routes/             auth, expenses, categories, budget, dashboard
+│   └── types/
+│       ├── models.ts       Shared types (Expense, Category, DashboardResponse…)
+│       └── express.d.ts    Adds req.userId to Express's Request type
+├── tsconfig.json
+└── dist/                   Compiled output (git-ignored)
+```
+
 ## API routes
 
 All routes except signup/login need the header `Authorization: Bearer <token>`.
@@ -65,7 +92,8 @@ Weeks run Monday to Sunday. `payment_method` is one of `Cash`, `UPI`, `Card`, `O
 
 1. Push the project to GitHub.
 2. On https://render.com → **New → Web Service** → pick your repo.
-3. Settings: **Root Directory** `backend`, **Build Command** `npm install`, **Start Command** `npm start`.
+3. Settings: **Root Directory** `backend`, **Build Command** `npm install --include=dev && npm run build`, **Start Command** `npm start`.
+   (`--include=dev` makes sure TypeScript is installed so the build can run.)
 4. Add environment variables: `DATABASE_URL`, `JWT_SECRET`, and `CORS_ORIGIN` (your Vercel frontend URL, e.g. `https://my-tracker.vercel.app`).
 5. Deploy, then open `https://<your-service>.onrender.com/health`. It should show `{"ok":true}`.
 
