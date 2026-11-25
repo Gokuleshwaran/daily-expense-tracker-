@@ -24,10 +24,17 @@ Run from inside `backend/` or `frontend/`:
 | Install | `npm install` |
 | Dev server | `npm run dev` (backend :4000, frontend :3000) |
 | Type check | `npm run typecheck` |
+| Unit tests | `npm test` (Vitest, runs once; `npm run test:watch` while developing) |
 | Production build | `npm run build` |
+| Full CI check, both packages (run from the repo root) | `node scripts/ci-local.mjs` (same steps as `.github/workflows/ci.yml`) |
 
-There is no test suite yet. Verify changes with `npm run typecheck` in the package you touched,
-and `npm run build` before saying a change is finished.
+A `pre-push` hook (`.githooks/pre-push`) runs type check + tests before every push. Enable it once per
+clone with `git config core.hooksPath .githooks`. Bypass with `SKIP_CI=1 git push` or `git push --no-verify`.
+
+Tests live in `backend/tests/` (Express routes via supertest, with `src/db` mocked, so no
+database is needed) and `frontend/tests/` (Vitest + React Testing Library + jsdom). Verify changes
+with `npm run typecheck` and `npm test` in the package you touched, and `npm run build` before
+saying a change is finished. When you add or change a route, helper or component, add or update its test.
 
 ## How the pieces connect
 
