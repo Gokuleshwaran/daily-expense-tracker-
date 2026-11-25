@@ -1,0 +1,48 @@
+#!/bin/sh
+# pre-push hook: runs type check + unit tests for backend and frontend before anything is pushed.
+# A failure blocks the push. Same checks as CI (.github/workflows/ci.yml), minus the slow build.
+#
+#   git push                    normal push (checks run first, ~10-15 s)
+#   CI_FULL=1 git push          also run the production builds (~45 s)
+#   SKIP_CI=1 git push          skip the checks this once
+#   git push --no-verify        skip all hooks this once
+#
+# Turn it on once per clone:  git config core.hooksPath .githooks
+
+if [ -n "$SKIP_CI" ]; then
+  echo "pre-push: SKIP_CI is set, skipping checks."
+  exit 0
+fi
+
+# Git feeds one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>.
+# Deleting a remote branch (local sha all zeros) has nothing to check.
+needs_check=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) needs_check=1 ;;
+  esac
+done
+if [ "$needs_check" -eq 0 ]; then
+  exit 0
+fi
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: Node.js was not found on PATH. Install it, or push with --no-verify." >&2
+  exit 1
+fi
+
+if [ -n "$CI_FULL" ]; then
+  ARGS=""
+else
+  ARGS="--skip-build"
+fi
+
+echo "pre-push: running CI checks before pushing (SKIP_CI=1 or --no-verify to bypass)..."
+# shellcheck disable=SC2086
+if ! node "$ROOT/scripts/ci-local.mjs" $ARGS; then
+  echo "" >&2
+  echo "pre-push: checks failed, push cancelled. Fix the failures above and push again." >&2
+  exit 1
+fi
