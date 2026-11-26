@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=18"
@@ -27,7 +29,10 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.16.10",
     "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.3.2",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.7"
   }
 }
