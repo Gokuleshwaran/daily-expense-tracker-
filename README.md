@@ -24,8 +24,8 @@ A simple web app to log your daily expenses in seconds and see where your money 
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | Next.js 14 (React 18), Tailwind CSS, Recharts |
-| Backend | Node.js, Express |
+| Frontend | Next.js 14, React 18, **TypeScript**, Tailwind CSS, Recharts |
+| Backend | Node.js, Express, **TypeScript** (tsx for dev, tsc for build) |
 | Database | Supabase (PostgreSQL) |
 | Auth | JWT + bcrypt |
 | Hosting | Vercel (frontend), Render (backend) |
@@ -34,22 +34,23 @@ A simple web app to log your daily expenses in seconds and see where your money 
 
 ```
 Daily Expence Tracker/
-├── backend/                 Node.js + Express API
+├── backend/                 Node.js + Express + TypeScript API
 │   ├── src/
-│   │   ├── index.js         Server setup, routes, CORS
-│   │   ├── db.js            PostgreSQL (Supabase) connection
-│   │   ├── schema.sql       Tables (created automatically on start)
+│   │   ├── index.ts         Server setup, routes, CORS
+│   │   ├── config.ts        Reads environment variables
+│   │   ├── db.ts            PostgreSQL (Supabase) connection
+│   │   ├── schema.ts        Tables (created automatically on start)
 │   │   ├── middleware/
-│   │   │   └── auth.js      Checks the login token
+│   │   │   └── auth.ts      Checks the login token
 │   │   └── routes/
-│   │       ├── auth.js      Sign up, log in, current user
-│   │       ├── expenses.js  Add / list / edit / delete / CSV export
-│   │       ├── categories.js
-│   │       ├── budget.js
-│   │       └── dashboard.js Weekly and monthly totals
+│   │       ├── auth.ts      Sign up, log in, current user
+│   │       ├── expenses.ts  Add / list / edit / delete / CSV export
+│   │       ├── categories.ts
+│   │       ├── budget.ts
+│   │       └── dashboard.ts Weekly and monthly totals
 │   ├── .env.example
 │   └── README.md            Backend setup + full API reference
-├── frontend/                Next.js app
+├── frontend/                Next.js + React + TypeScript app
 │   ├── app/
 │   │   ├── login/           Login and sign-up page
 │   │   ├── dashboard/       Weekly / monthly dashboard
